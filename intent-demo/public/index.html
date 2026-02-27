@@ -34,6 +34,14 @@
     .option-card:active {
       transform: scale(0.98);
     }
+    .option-selected {
+      border-color: #3b82f6 !important;
+      background-color: #eff6ff !important;
+    }
+    .option-selected .option-letter {
+      background-color: #3b82f6 !important;
+      color: white !important;
+    }
   </style>
 </head>
 <body class="bg-[#FAFBFC] min-h-screen">
@@ -47,7 +55,7 @@
       analysis: null,
       answers: {},
       currentQuestion: null,
-      isLoading: false,
+      selectedOption: null,
       questionHistory: []
     };
 
@@ -181,8 +189,9 @@
       container.className = 'min-h-screen flex flex-col items-center justify-center px-6 animate-fadeIn';
       
       container.innerHTML = `
-        <button id="backBtn" class="absolute top-6 left-6 w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-          <i class="fas fa-arrow-left text-gray-500"></i>
+        <button id="backBtn" class="absolute top-6 left-6 flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
+          <i class="fas fa-arrow-left text-sm"></i>
+          <span class="text-sm">返回</span>
         </button>
         
         <div class="text-center">
@@ -261,6 +270,11 @@
       state.analysis = analyzeIntent(state.userInput);
       await new Promise(r => setTimeout(r, 500));
       
+      // 初始化答案，将提取的目的地放入answers
+      if (state.analysis?.extractedInfo?.destination) {
+        state.answers.destination = state.analysis.extractedInfo.destination;
+      }
+      
       state.currentPage = 'question';
       state.currentQuestion = generateNextQuestion();
       render();
@@ -271,7 +285,6 @@
       const container = document.createElement('div');
       container.className = 'min-h-screen flex flex-col px-6 py-12 animate-fadeIn';
       
-      const progress = Math.min((Object.keys(state.answers).length) * 20, 80);
       const question = state.currentQuestion;
       
       if (!question) {
@@ -280,11 +293,17 @@
         return container;
       }
       
+      // 计算进度（从第2/5开始，因为目的地已提取）
+      const answeredCount = Object.keys(state.answers).length;
+      const totalQuestions = state.analysis?.intent?.type === 'travel' ? 5 : 3;
+      const progress = Math.min((answeredCount / totalQuestions) * 100, 95);
+      
       container.innerHTML = `
         <div class="max-w-xl mx-auto w-full mb-8">
           <div class="flex items-center gap-4 mb-6">
-            <button id="backBtn" class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-              <i class="fas fa-arrow-left text-gray-500"></i>
+            <button id="backBtn" class="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
+              <i class="fas fa-arrow-left text-sm"></i>
+              <span class="text-sm">返回</span>
             </button>
             <div class="flex-1">
               <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -294,12 +313,14 @@
             <span class="text-sm text-gray-400 w-12 text-right">${Math.round(progress)}%</span>
           </div>
           
-          <div class="flex items-center gap-2 mb-4">
+          <div class="flex items-center gap-2 mb-4 flex-wrap">
             <span class="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
               ${state.analysis?.intent?.label || '智能分析'}
             </span>
-            ${Object.keys(state.analysis?.extractedInfo || {}).length > 0 ? `
-              <span class="text-xs text-gray-400">已提取 ${Object.keys(state.analysis.extractedInfo).length} 个关键信息</span>
+            ${state.analysis?.extractedInfo?.destination ? `
+              <span class="px-3 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full">
+                目的地: ${state.analysis.extractedInfo.destination}
+              </span>
             ` : ''}
           </div>
         </div>
@@ -310,16 +331,17 @@
             ${question.subtitle ? `<p class="text-gray-500">${question.subtitle}</p>` : ''}
           </div>
           
-          <div class="space-y-3">
+          <div class="space-y-3" id="optionsContainer">
             ${question.options.map((opt, idx) => `
               <button
                 class="option-card w-full p-5 bg-white rounded-xl border-2 border-gray-200
                        text-left hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10
                        transition-all duration-200 group"
                 data-value="${opt.value}"
+                data-index="${idx}"
               >
                 <div class="flex items-center gap-4">
-                  <span class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center
+                  <span class="option-letter w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center
                                text-base font-bold text-gray-600
                                group-hover:bg-blue-500 group-hover:text-white
                                transition-colors">
@@ -330,6 +352,13 @@
               </button>
             `).join('')}
           </div>
+          
+          ${state.selectedOption ? `
+            <div class="mt-8 flex items-center justify-center gap-2 text-gray-400">
+              <i class="fas fa-spinner fa-spin text-sm"></i>
+              <span class="text-sm">准备下一个问题...</span>
+            </div>
+          ` : ''}
           
           ${Object.keys(state.answers).length > 0 ? `
             <div class="mt-10 pt-6 border-t border-gray-100">
@@ -344,46 +373,85 @@
         </div>
       `;
       
+      // 返回按钮事件
       container.querySelector('#backBtn').addEventListener('click', () => {
-        const keys = Object.keys(state.answers);
-        if (keys.length > 0) {
-          const newAnswers = { ...state.answers };
-          delete newAnswers[keys[keys.length - 1]];
-          state.answers = newAnswers;
-          if (state.questionHistory.length > 1) {
-            state.questionHistory.pop();
-            state.currentQuestion = state.questionHistory[state.questionHistory.length - 1];
-          } else {
-            state.currentQuestion = generateNextQuestion();
-          }
-          render();
-        } else {
-          state.currentPage = 'entry';
-          state.analysis = null;
-          state.answers = {};
-          state.questionHistory = [];
-          render();
-        }
+        handleBack();
       });
       
+      // 选项点击事件
       container.querySelectorAll('.option-card').forEach(btn => {
         btn.addEventListener('click', () => {
-          const value = btn.dataset.value;
-          state.answers[state.currentQuestion.id] = value;
+          if (state.selectedOption) return;
           
-          const nextQuestion = generateNextQuestion();
-          if (nextQuestion) {
-            state.currentQuestion = nextQuestion;
-            state.questionHistory.push(nextQuestion);
-            render();
-          } else {
-            state.currentPage = 'result';
-            render();
-          }
+          const value = btn.dataset.value;
+          const index = btn.dataset.index;
+          
+          // 添加选中样式
+          btn.classList.add('option-selected');
+          state.selectedOption = value;
+          
+          // 300ms 后自动跳转
+          setTimeout(() => {
+            state.answers[question.id] = value;
+            state.selectedOption = null;
+            
+            const nextQuestion = generateNextQuestion();
+            if (nextQuestion && nextQuestion.id !== question.id) {
+              state.currentQuestion = nextQuestion;
+              state.questionHistory.push(nextQuestion);
+              render();
+            } else {
+              state.currentPage = 'result';
+              render();
+            }
+          }, 300);
         });
       });
       
       return container;
+    }
+
+    function handleBack() {
+      const answerKeys = Object.keys(state.answers);
+      
+      // 如果当前在问题页面且有答案，返回到上一题
+      if (state.currentPage === 'question') {
+        // 如果只有目的地（AI提取的），返回到分析页面
+        if (answerKeys.length <= 1) {
+          state.currentPage = 'analyzing';
+          state.answers = {};
+          state.questionHistory = [];
+          state.selectedOption = null;
+          render();
+          return;
+        }
+        
+        // 删除最后一个答案
+        const lastKey = answerKeys[answerKeys.length - 1];
+        if (lastKey !== 'destination') {
+          delete state.answers[lastKey];
+        }
+        
+        state.selectedOption = null;
+        
+        // 恢复到上一个问题
+        if (state.questionHistory.length > 1) {
+          state.questionHistory.pop();
+          state.currentQuestion = state.questionHistory[state.questionHistory.length - 1];
+          render();
+        } else {
+          state.currentPage = 'analyzing';
+          render();
+        }
+        return;
+      }
+      
+      // 默认返回
+      state.currentPage = 'entry';
+      state.analysis = null;
+      state.answers = {};
+      state.questionHistory = [];
+      render();
     }
 
     // ============ 结果页面 ============
@@ -391,7 +459,6 @@
       const container = document.createElement('div');
       container.className = 'min-h-screen px-6 py-12 animate-fadeIn';
       
-      const searchQuery = buildSearchQuery();
       const results = generateResults();
       
       container.innerHTML = `
@@ -401,10 +468,16 @@
               <h1 class="text-3xl font-semibold text-gray-900 mb-2">搜索结果</h1>
               <p class="text-gray-500">${results.summary}</p>
             </div>
-            <button id="restartBtn" class="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
-              <i class="fas fa-redo text-sm"></i>
-              <span>重新开始</span>
-            </button>
+            <div class="flex gap-3">
+              <button id="backBtn" class="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
+                <i class="fas fa-arrow-left text-sm"></i>
+                <span>返回</span>
+              </button>
+              <button id="restartBtn" class="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
+                <i class="fas fa-redo text-sm"></i>
+                <span>重新开始</span>
+              </button>
+            </div>
           </div>
           
           <div class="flex flex-wrap gap-2 mb-12">
@@ -472,12 +545,17 @@
             </section>
           `).join('')}
           
-          
           <div class="mt-20 pt-8 border-t border-gray-100 text-center">
             <p class="text-gray-400 text-sm">搜索结果基于你的个性化需求生成 · ${new Date().toLocaleDateString()}</p>
           </div>
         </div>
       `;
+      
+      container.querySelector('#backBtn').addEventListener('click', () => {
+        // 返回到最后一题
+        state.currentPage = 'question';
+        render();
+      });
       
       container.querySelector('#restartBtn').addEventListener('click', () => {
         state.currentPage = 'entry';
@@ -486,6 +564,7 @@
         state.answers = {};
         state.currentQuestion = null;
         state.questionHistory = [];
+        state.selectedOption = null;
         render();
       });
       
@@ -544,50 +623,15 @@
       const answeredKeys = Object.keys(state.answers);
       const intent = state.analysis?.intent?.type || 'general';
       const extractedInfo = state.analysis?.extractedInfo || {};
+      const destination = extractedInfo?.destination || state.answers?.destination;
       
-      // 旅游问题
+      // 旅游问题 - 直接从第2个问题开始（天数），跳过目的地
       if (intent === 'travel') {
-        if (!answeredKeys.includes('destination')) {
-          const dest = extractedInfo.destination;
-          if (dest && /日本|京都|东京|大阪/.test(dest)) {
-            const destOptions = {
-              '日本': [
-                { label: '京都 - 古都文化、寺庙神社', value: '京都', letter: 'A' },
-                { label: '东京 - 现代都市、购物美食', value: '东京', letter: 'B' },
-                { label: '大阪 - 美食之都、环球影城', value: '大阪', letter: 'C' },
-                { label: '北海道 - 自然风光、温泉滑雪', value: '北海道', letter: 'D' },
-              ],
-              '京都': [
-                { label: '经典路线 - 清水寺、金阁寺、伏见稻荷', value: '经典路线', letter: 'A' },
-                { label: '深度文化 - 茶道、和服、寺庙住宿', value: '深度文化', letter: 'B' },
-                { label: '美食之旅 - 怀石料理、抹茶、锦市场', value: '美食之旅', letter: 'C' },
-                { label: '周边探索 - 岚山、宇治、奈良一日游', value: '周边探索', letter: 'D' },
-              ]
-            };
-            return {
-              id: 'destination',
-              question: `你想如何体验${dest}？`,
-              subtitle: 'AI 根据你的需求推荐了以下玩法',
-              options: destOptions[dest] || destOptions['日本']
-            };
-          }
-          return {
-            id: 'destination',
-            question: '你想去哪里旅游？',
-            subtitle: '选择你的目的地类型',
-            options: [
-              { label: '国内热门城市', value: '国内热门', letter: 'A' },
-              { label: '国内小众景点', value: '国内小众', letter: 'B' },
-              { label: '日韩东南亚', value: '亚洲周边', letter: 'C' },
-              { label: '欧洲美洲', value: '欧美长途', letter: 'D' },
-            ]
-          };
-        }
-        
+        // 第1题：天数（跳过目的地，因为AI已提取）
         if (!answeredKeys.includes('duration')) {
           return {
             id: 'duration',
-            question: `计划在${state.answers.destination || '目的地'}玩几天？`,
+            question: `计划在${destination || '目的地'}玩几天？`,
             subtitle: '行程天数影响推荐内容',
             options: [
               { label: '2-3天 精华游', value: '2-3天', letter: 'A' },
@@ -598,6 +642,7 @@
           };
         }
         
+        // 第2题：预算
         if (!answeredKeys.includes('budget')) {
           return {
             id: 'budget',
@@ -612,8 +657,9 @@
           };
         }
         
+        // 第3题：风格
         if (!answeredKeys.includes('style')) {
-          const dest = state.answers.destination;
+          const dest = destination || '目的地';
           const styleOptions = {
             '京都': [
               { label: '文化体验 - 寺庙、茶道、和服', value: '文化体验', letter: 'A' },
@@ -627,15 +673,27 @@
               { label: '城市观光 - 塔、神社、博物馆', value: '城市观光', letter: 'C' },
               { label: '主题乐园 - 迪士尼、海贼王', value: '主题乐园', letter: 'D' },
             ],
+            '大阪': [
+              { label: '吃货之旅 - 章鱼烧、大阪烧、串炸', value: '美食之旅', letter: 'A' },
+              { label: '城市漫步 - 道顿堀、心斋桥', value: '城市观光', letter: 'B' },
+              { label: '环球影城 - 哈利波特、任天堂', value: '主题乐园', letter: 'C' },
+              { label: '周边一日游 - 京都、奈良', value: '周边游', letter: 'D' },
+            ],
           };
           return {
             id: 'style',
-            question: `你想怎么玩${dest || '目的地'}？`,
+            question: `你想怎么玩${dest}？`,
             subtitle: '选择最吸引你的旅行方式',
-            options: styleOptions[dest] || styleOptions['京都']
+            options: styleOptions[dest] || styleOptions['京都'] || [
+              { label: '文化体验', value: '文化体验', letter: 'A' },
+              { label: '美食之旅', value: '美食之旅', letter: 'B' },
+              { label: '休闲度假', value: '休闲度假', letter: 'C' },
+              { label: '户外冒险', value: '户外冒险', letter: 'D' },
+            ]
           };
         }
         
+        // 第4题：同伴
         if (!answeredKeys.includes('companion')) {
           return {
             id: 'companion',
@@ -777,27 +835,6 @@
       }
       
       return null;
-    }
-
-    function buildSearchQuery() {
-      const parts = [];
-      if (state.analysis?.intent?.label) parts.push(state.analysis.intent.label);
-      
-      const { extractedInfo } = state.analysis || {};
-      if (extractedInfo) {
-        if (extractedInfo.destination) parts.push(extractedInfo.destination);
-        if (extractedInfo.purpose) parts.push(extractedInfo.purpose);
-        if (extractedInfo.budget) parts.push(`预算${extractedInfo.budget}`);
-        if (extractedInfo.time) parts.push(extractedInfo.time);
-      }
-      
-      Object.values(state.answers).forEach(answer => {
-        if (!parts.includes(answer)) parts.push(answer);
-      });
-      
-      if (parts.length === 0) parts.push(state.userInput);
-      
-      return parts.join(' ');
     }
 
     function generateResults() {
