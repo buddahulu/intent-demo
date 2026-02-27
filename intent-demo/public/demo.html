@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>智能需求助手</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; color: #0F172A; }
+    .page { display: none; min-height: 100vh; }
+    .page.active { display: flex; flex-direction: column; }
+    .btn-primary { background: #2563EB; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .btn-primary:hover { background: #1D4ED8; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .option-btn { width: 100%; padding: 16px; background: white; border: 2px solid #E2E8F0; border-radius: 12px; text-align: left; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px; }
+    .option-btn:hover { border-color: #3B82F6; background: #EFF6FF; }
+    .option-letter { width: 36px; height: 36px; background: #F1F5F9; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #64748B; }
+    .option-btn:hover .option-letter { background: #DBEAFE; color: #2563EB; }
+    .progress-bar { height: 6px; background: #E2E8F0; border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #2563EB; border-radius: 3px; transition: width 0.5s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade { animation: fadeIn 0.4s ease; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .animate-pulse { animation: pulse 1.5s ease-in-out infinite; }
+    textarea { width: 100%; min-height: 120px; padding: 16px; border: 1px solid #E2E8F0; border-radius: 16px; font-size: 16px; resize: none; outline: none; }
+    textarea:focus { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+    .tag { display: inline-block; padding: 6px 12px; background: #EFF6FF; color: #2563EB; border-radius: 20px; font-size: 14px; margin: 4px; }
+    .result-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body>
+  <!-- 首页 -->
+  <div id="page-entry" class="page active" style="padding: 24px; justify-content: center; align-items: center;">
+    <div class="animate-fade" style="width: 100%; max-width: 400px;">
+      <div style="width: 64px; height: 64px; background: #2563EB; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; box-shadow: 0 10px 25px rgba(37,99,235,0.3);">
+        <i class="fas fa-sparkles" style="font-size: 28px; color: white;"></i>
+      </div>
+      <h1 style="font-size: 28px; font-weight: 700; text-align: center; margin-bottom: 8px;">智能需求助手</h1>
+      <p style="color: #64748B; text-align: center; margin-bottom: 32px;">告诉我你想做什么，AI 会帮你梳理需求</p>
+      
+      <div style="position: relative;">
+        <textarea id="user-input" placeholder="描述你的需求，比如：我想买一台笔记本电脑..."></textarea>
+        <button id="start-btn" class="btn-primary" style="position: absolute; bottom: 12px; right: 12px; width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px;" disabled>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+      
+      <div style="margin-top: 24px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <i class="fas fa-lightbulb" style="color: #F59E0B;"></i>
+          <span style="font-size: 14px; color: #64748B;">试试这些示例</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <button class="example-btn" style="padding: 10px 16px; background: white; border: 1px solid #E2E8F0; border-radius: 12px; font-size: 14px; color: #475569; cursor: pointer;">我想买一台适合视频剪辑的笔记本电脑</button>
+          <button class="example-btn" style="padding: 10px 16px; background: white; border: 1px solid #E2E8F0; border-radius: 12px; font-size: 14px; color: #475569; cursor: pointer;">计划带家人去日本玩一周</button>
+          <button class="example-btn" style="padding: 10px 16px; background: white; border: 1px solid #E2E8F0; border-radius: 12px; font-size: 14px; color: #475569; cursor: pointer;">帮我看看今年的事业运势</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 意图确认页 -->
+  <div id="page-intent" class="page" style="padding: 24px;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+      <button id="back-to-entry" style="width: 40px; height: 40px; border: none; background: transparent; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+        <i class="fas fa-arrow-left" style="color: #64748B;"></i>
+      </button>
+      <span style="color: #64748B;">分析需求</span>
+    </div>
+    
+    <div style="margin-bottom: 24px;">
+      <p style="font-size: 14px; color: #94A3B8; margin-bottom: 8px;">你的需求</p>
+      <div class="card">
+        <p id="user-input-display" style="color: #334155;"></p>
+      </div>
+    </div>
+    
+    <div id="analyzing" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <div style="width: 64px; height: 64px; background: #EFF6FF; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+        <i class="fas fa-brain" style="font-size: 28px; color: #2563EB;" class="animate-pulse"></i>
+      </div>
+      <p style="color: #475569;">AI 正在分析你的需求...</p>
+    </div>
+    
+    <div id="intent-result" style="display: none;" class="animate-fade">
+      <p style="font-size: 14px; color: #94A3B8; margin-bottom: 12px; text-align: center;">识别到的意图</p>
+      <div class="card" style="text-align: center;">
+        <div style="width: 56px; height: 56px; background: #2563EB; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+          <span id="intent-icon" style="font-size: 24px; color: white; font-weight: 600;"></span>
+        </div>
+        <h3 id="intent-label" style="font-size: 20px; font-weight: 600; margin-bottom: 8px;"></h3>
+        <p id="intent-desc" style="color: #64748B; margin-bottom: 24px;"></p>
+        <div style="display: flex; gap: 12px;">
+          <button id="confirm-intent" class="btn-primary" style="flex: 1;">
+            <i class="fas fa-check" style="margin-right: 8px;"></i>确认，开始提问
+          </button>
+          <button id="reanalyze" style="padding: 12px 20px; border: 1px solid #E2E8F0; background: white; border-radius: 12px; color: #475569; cursor: pointer;">
+            <i class="fas fa-rotate-right" style="margin-right: 8px;"></i>重新分析
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 问卷页 -->
+  <div id="page-question" class="page" style="padding: 24px;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+      <button id="back-to-intent" style="width: 40px; height: 40px; border: none; background: transparent; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+        <i class="fas fa-arrow-left" style="color: #64748B;"></i>
+      </button>
+      <div style="flex: 1;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span id="question-counter" style="font-size: 14px; color: #64748B;"></span>
+          <span id="progress-text" style="font-size: 14px; color: #2563EB; font-weight: 500;"></span>
+        </div>
+        <div class="progress-bar">
+          <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="question-container" class="animate-fade" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+      <h2 id="question-text" style="font-size: 24px; font-weight: 600; margin-bottom: 8px;"></h2>
+      <p id="question-subtitle" style="color: #64748B; margin-bottom: 32px;"></p>
+      <div id="options-container"></div>
+    </div>
+  </div>
+
+  <!-- 结果页 -->
+  <div id="page-result" class="page" style="padding: 24px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 40px; height: 40px; background: #2563EB; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+          <i class="fas fa-sparkles" style="color: white;"></i>
+        </div>
+        <span style="font-weight: 600;">搜索结果</span>
+      </div>
+      <button id="restart-btn" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; border: none; background: transparent; color: #64748B; cursor: pointer; border-radius: 10px;">
+        <i class="fas fa-rotate-left"></i>重新开始
+      </button>
+    </div>
+    
+    <div id="searching" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <div style="width: 80px; height: 80px; background: #EFF6FF; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+        <i class="fas fa-search" style="font-size: 32px; color: #2563EB;" class="animate-pulse"></i>
+      </div>
+      <p style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">正在全网搜索...</p>
+      <p style="color: #64748B;">根据你的需求匹配最佳方案</p>
+    </div>
+    
+    <div id="results-container" style="display: none;">
+      <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 16px; padding: 16px; margin-bottom: 20px;">
+        <p id="result-summary" style="color: #1E40AF; margin-bottom: 12px;"></p>
+        <div id="answer-tags"></div>
+      </div>
+      <div id="result-cards"></div>
+    </div>
+  </div>
+
+  <script>
+    // 数据
+    const intents = {
+      shopping: { label: '商品采购', desc: '帮你找到最适合的商品，比较价格、性能和口碑', icon: '购' },
+      travel: { label: '旅行规划', desc: '为你定制完整的旅行方案，包含行程、住宿和预算', icon: '旅' },
+      divination: { label: '命理咨询', desc: '提供专业的命理分析，解答你的困惑', icon: '命' },
+      learning: { label: '学习培训', desc: '推荐适合你的学习资源和课程', icon: '学' },
+      health: { label: '健康医疗', desc: '提供健康相关的信息和建议', icon: '健' },
+      general: { label: '通用咨询', desc: '为你搜索相关信息和解决方案', icon: '咨' }
+    };
+
+    const questions = {
+      shopping: [
+        { id: 'category', q: '你想购买什么类型的商品？', sub: '选择最符合你需求的品类', options: ['数码电子', '服装配饰', '家居用品', '美妆护肤'] },
+        { id: 'budget', q: '你的预算范围是？', sub: '这有助于我们筛选合适的选项', options: ['500元以下', '500-2000元', '2000-5000元', '5000元以上'] },
+        { id: 'priority', q: '你最看重什么？', sub: '我们会根据优先级推荐', options: ['性价比', '品牌口碑', '功能性能', '外观设计'] },
+        { id: 'timeline', q: '你打算什么时候购买？', options: ['马上买', '一周内', '一个月内', '先了解看看'] }
+      ],
+      travel: [
+        { id: 'destination', q: '你想去哪里？', sub: '选择你的目的地类型', options: ['国内热门城市', '国内小众景点', '日韩东南亚', '欧洲美洲'] },
+        { id: 'duration', q: '计划玩几天？', options: ['周末2天', '3-5天', '一周左右', '十天以上'] },
+        { id: 'budget', q: '人均预算是多少？', options: ['2000元以下', '2000-5000元', '5000-10000元', '10000元以上'] },
+        { id: 'style', q: '你喜欢什么旅行风格？', options: ['休闲放松', '打卡景点', '美食探索', '户外冒险'] }
+      ],
+      divination: [
+        { id: 'type', q: '你想咨询什么类型？', options: ['八字命理', '塔罗占卜', '星座运势', '其他'] },
+        { id: 'topic', q: '主要想了解哪方面？', options: ['事业财运', '感情婚姻', '健康平安', '综合运势'] },
+        { id: 'urgency', q: '这是关于近期还是长期？', options: ['今年运势', '近期变化', '长期发展', '特定事件'] }
+      ],
+      learning: [
+        { id: 'field', q: '你想学习什么领域？', options: ['编程技术', '语言学习', '职业技能', '兴趣爱好'] },
+        { id: 'level', q: '你目前的水平是？', options: ['零基础', '入门水平', '有一定基础', '想进阶提升'] },
+        { id: 'goal', q: '学习的主要目的是？', options: ['工作需要', '考证提升', '转行就业', '个人兴趣'] }
+      ],
+      health: [
+        { id: 'topic', q: '你想了解什么健康话题？', options: ['症状查询', '医院推荐', '体检建议', '健康科普'] },
+        { id: 'urgency', q: '紧急程度如何？', options: ['很紧急', '有点担心', '一般了解', '预防保健'] }
+      ],
+      general: [
+        { id: 'detail', q: '能再具体描述一下你的需求吗？', sub: '这有助于我们更准确地帮助你', options: ['需要专业建议', '想对比选项', '了解最新信息', '解决具体问题'] },
+        { id: 'timeline', q: '你希望在多久内得到结果？', options: ['马上需要', '今天内', '这几天', '不着急'] }
+      ]
+    };
+
+    const results = {
+      shopping: [
+        { title: '小米14 Pro', desc: '徕卡光学镜头，骁龙8 Gen3，2K超视感屏', price: '¥4999', tags: ['数码', '高性价比'] },
+        { title: 'iPhone 15 Pro', desc: 'A17 Pro芯片，钛金属设计，专业级摄像', price: '¥7999', tags: ['品牌旗舰'] },
+        { title: '华为 Mate 60 Pro', desc: '卫星通话，玄武钢化昆仑玻璃', price: '¥6999', tags: ['国产旗舰'] }
+      ],
+      travel: [
+        { title: '京都5日深度游', desc: '清水寺、金阁寺、岚山竹林', price: '¥6800/人', tags: ['日本', '文化'] },
+        { title: '三亚海棠湾度假', desc: '五星酒店3晚+接送机+免税店', price: '¥3999/人', tags: ['度假', '亲子'] },
+        { title: '云南大理丽江7日', desc: '苍山洱海、古城漫步', price: '¥3580/人', tags: ['风景'] }
+      ],
+      divination: [
+        { title: '2024年流年运势详批', desc: '专业命理师一对一分析', price: '¥298', tags: ['八字'] },
+        { title: '塔罗牌在线占卜', desc: 'AI智能解牌+真人复核', price: '¥68', tags: ['塔罗'] },
+        { title: '星座月度运势订阅', desc: '每月1日推送', price: '¥18/月', tags: ['星座'] }
+      ],
+      learning: [
+        { title: 'Python全栈训练营', desc: '从零基础到项目实战', price: '¥2999', tags: ['编程'] },
+        { title: '商务英语速成班', desc: '30天突破口语瓶颈', price: '¥1599', tags: ['语言'] },
+        { title: 'PMP项目管理认证', desc: '全套备考资料+模拟题库', price: '¥3999', tags: ['证书'] }
+      ],
+      health: [
+        { title: '三甲医院在线问诊', desc: '全国三甲医院专家', price: '¥50-200', tags: ['在线问诊'] },
+        { title: '全面体检套餐', desc: '包含30+项检查', price: '¥599', tags: ['体检'] },
+        { title: '心理健康评估', desc: '专业心理量表+咨询师', price: '¥99', tags: ['心理'] }
+      ],
+      general: [
+        { title: '智能助手专业版', desc: '更强大的AI能力', price: '¥30/月', tags: ['AI工具'] },
+        { title: '行业报告数据库', desc: '覆盖100+行业', price: '¥199/月', tags: ['数据'] },
+        { title: '专家咨询服务', desc: '各领域资深专家', price: '¥500/小时', tags: ['专家'] }
+      ]
+    };
+
+    // 状态
+    let currentIntent = null;
+    let currentQuestionIndex = 0;
+    let userAnswers = {};
+    let userInputText = '';
+
+    // 工具函数
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+    }
+
+    function detectIntent(input) {
+      const lower = input.toLowerCase();
+      if (/买|购|电脑|手机|相机|衣服|鞋|包|商品|价格/.test(lower)) return 'shopping';
+      if (/旅|游|玩|去|行程|酒店|机票|景点/.test(lower)) return 'travel';
+      if (/命|运|势|八字|塔罗|星座|占卜|算命/.test(lower)) return 'divination';
+      if (/学|课|教程|培训|技能|考试/.test(lower)) return 'learning';
+      if (/病|医|药|健康|症状|检查/.test(lower)) return 'health';
+      return 'general';
+    }
+
+    // 首页
+    const userInput = document.getElementById('user-input');
+    const startBtn = document.getElementById('start-btn');
+
+    userInput.addEventListener('input', () => {
+      startBtn.disabled = !userInput.value.trim();
+    });
+
+    startBtn.addEventListener('click', () => {
+      userInputText = userInput.value;
+      document.getElementById('user-input-display').textContent = userInputText;
+      showPage('page-intent');
+      
+      // 模拟分析
+      document.getElementById('analyzing').style.display = 'flex';
+      document.getElementById('intent-result').style.display = 'none';
+      
+      setTimeout(() => {
+        currentIntent = detectIntent(userInputText);
+        const intent = intents[currentIntent];
+        document.getElementById('intent-icon').textContent = intent.icon;
+        document.getElementById('intent-label').textContent = intent.label;
+        document.getElementById('intent-desc').textContent = intent.desc;
+        
+        document.getElementById('analyzing').style.display = 'none';
+        document.getElementById('intent-result').style.display = 'block';
+      }, 1500);
+    });
+
+    document.querySelectorAll('.example-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        userInput.value = btn.textContent;
+        startBtn.disabled = false;
+      });
+    });
+
+    // 意图页
+    document.getElementById('back-to-entry').addEventListener('click', () => showPage('page-entry'));
+    
+    document.getElementById('confirm-intent').addEventListener('click', () => {
+      currentQuestionIndex = 0;
+      userAnswers = {};
+      showQuestion();
+      showPage('page-question');
+    });
+
+    document.getElementById('reanalyze').addEventListener('click', () => {
+      document.getElementById('analyzing').style.display = 'flex';
+      document.getElementById('intent-result').style.display = 'none';
+      setTimeout(() => {
+        document.getElementById('analyzing').style.display = 'none';
+        document.getElementById('intent-result').style.display = 'block';
+      }, 800);
+    });
+
+    // 问卷页
+    function showQuestion() {
+      const qs = questions[currentIntent];
+      const q = qs[currentQuestionIndex];
+      
+      document.getElementById('question-counter').textContent = `问题 ${currentQuestionIndex + 1}/${qs.length}`;
+      document.getElementById('progress-text').textContent = `${Math.round((currentQuestionIndex / qs.length) * 100)}%`;
+      document.getElementById('progress-fill').style.width = `${(currentQuestionIndex / qs.length) * 100}%`;
+      
+      document.getElementById('question-text').textContent = q.q;
+      document.getElementById('question-subtitle').textContent = q.sub || '';
+      
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+      
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerHTML = `
+          <div class="option-letter">${String.fromCharCode(65 + i)}</div>
+          <span style="font-weight: 500; color: #334155;">${opt}</span>
+          <i class="fas fa-chevron-right" style="margin-left: auto; color: #CBD5E1;"></i>
+        `;
+        btn.addEventListener('click', () => selectOption(q.id, opt));
+        container.appendChild(btn);
+      });
+    }
+
+    function selectOption(qid, value) {
+      userAnswers[qid] = value;
+      const qs = questions[currentIntent];
+      
+      if (currentQuestionIndex < qs.length - 1) {
+        currentQuestionIndex++;
+        showQuestion();
+      } else {
+        showResults();
+      }
+    }
+
+    document.getElementById('back-to-intent').addEventListener('click', () => {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        showQuestion();
+      } else {
+        showPage('page-intent');
+      }
+    });
+
+    // 结果页
+    function showResults() {
+      showPage('page-result');
+      document.getElementById('searching').style.display = 'flex';
+      document.getElementById('results-container').style.display = 'none';
+      
+      setTimeout(() => {
+        const intent = intents[currentIntent];
+        document.getElementById('result-summary').textContent = `基于你对「${intent.label}」的需求，我们为你找到了以下推荐`;
+        
+        const tagsContainer = document.getElementById('answer-tags');
+        tagsContainer.innerHTML = '';
+        Object.values(userAnswers).forEach(ans => {
+          const tag = document.createElement('span');
+          tag.className = 'tag';
+          tag.textContent = ans;
+          tagsContainer.appendChild(tag);
+        });
+        
+        const cardsContainer = document.getElementById('result-cards');
+        cardsContainer.innerHTML = '';
+        
+        results[currentIntent].forEach((r, i) => {
+          const card = document.createElement('div');
+          card.className = 'result-card animate-fade';
+          card.style.animationDelay = `${i * 100}ms`;
+          card.innerHTML = `
+            <div style="display: flex; gap: 16px;">
+              <div style="width: 64px; height: 64px; background: #F1F5F9; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <span style="font-size: 24px;">${r.title[0]}</span>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 4px;">
+                  <h4 style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.title}</h4>
+                  <span style="color: #2563EB; font-weight: 600; white-space: nowrap;">${r.price}</span>
+                </div>
+                <p style="color: #64748B; font-size: 14px; margin-bottom: 8px;">${r.desc}</p>
+                <div style="display: flex; gap: 6px;">
+                  ${r.tags.map(t => `<span style="padding: 4px 10px; background: #F1F5F9; color: #64748B; font-size: 12px; border-radius: 20px;">${t}</span>`).join('')}
+                </div>
+              </div>
+            </div>
+          `;
+          cardsContainer.appendChild(card);
+        });
+        
+        document.getElementById('searching').style.display = 'none';
+        document.getElementById('results-container').style.display = 'block';
+      }, 2000);
+    }
+
+    document.getElementById('restart-btn').addEventListener('click', () => {
+      userInput.value = '';
+      startBtn.disabled = true;
+      currentIntent = null;
+      currentQuestionIndex = 0;
+      userAnswers = {};
+      showPage('page-entry');
+    });
+  </script>
+</body>
+</html>

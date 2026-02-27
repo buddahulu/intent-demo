@@ -1,0 +1,30 @@
+{
+  "name": "agent-payment-mvp",
+  "version": "1.0.0",
+  "description": "Agent Payment MVP - Multi-Agent Restaurant Booking System",
+  "main": "start.js",
+  "scripts": {
+    "start": "node start.js",
+    "registry": "node services/registry.js",
+    "merchant": "node agents/merchant.js",
+    "user-agent": "node agents/user-agent.js",
+    "test": "node test/test.js"
+  },
+  "keywords": [
+    "agent",
+    "payment",
+    "restaurant",
+    "booking",
+    "ai"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "uuid": "^9.0.1"
+  }
+}

@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intent Search - 智能意图搜索</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --primary-soft: rgba(37, 99, 235, 0.08);
+            --primary-border: rgba(37, 99, 235, 0.2);
+            --bg: #fafafa;
+            --surface: #ffffff;
+            --surface-hover: #f8fafc;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --border-light: #f1f5f9;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius-sm: 6px;
+            --radius: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-light);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .brand {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text-primary);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 100px 24px 48px;
+            min-height: 100vh;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .hero h1 {
+            font-size: 40px;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* Input Section */
+        .input-section {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            padding: 8px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 32px;
+            transition: all 0.3s ease;
+        }
+
+        .input-section:focus-within {
+            border-color: var(--primary-border);
+            box-shadow: 0 0 0 4px var(--primary-soft), var(--shadow-lg);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-field {
+            flex: 1;
+            border: none;
+            padding: 16px 20px;
+            font-size: 16px;
+            background: transparent;
+            outline: none;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        .input-field::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--surface-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-light);
+        }
+
+        /* Intent Badge */
+        .intent-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 24px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Question Flow */
+        .question-flow {
+            display: none;
+            animation: slideUp 0.4s ease;
+        }
+
+        .question-flow.active {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .question-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .question-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .question-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-soft);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 18px;
+        }
+
+        .question-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .question-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .question-text {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .option-btn {
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .option-btn:hover {
+            border-color: var(--primary);
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .option-btn.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .text-input-wrapper {
+            position: relative;
+        }
+
+        .text-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .text-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-soft);
+        }
+
+        .question-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        /* Progress */
+        .progress-bar {
+            height: 4px;
+            background: var(--border-light);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+
+        /* Results Section */
+        .results-section {
+            display: none;
+            animation: slideUp 0.5s ease;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .results-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .results-count {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .search-query {
+            background: var(--primary-soft);
+            border: 1px solid var(--primary-border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            font-size: 14px;
+            color: var(--primary);
+            margin-bottom: 24px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .results-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .result-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+        }
+
+        .result-card:hover {
+            border-color: var(--primary-border);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .result-favicon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .result-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .result-url {
+            font-size: 12px;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .result-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .result-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .result-tags {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .result-tag {
+            padding: 4px 10px;
+            background: var(--border-light);
+            border-radius: 100px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Loading State */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 48px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Summary Card */
+        .summary-card {
+            background: linear-gradient(135deg, var(--primary-soft) 0%, rgba(59, 130, 246, 0.04) 100%);
+            border: 1px solid var(--primary-border);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+
+        .summary-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .summary-content {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Restart Button */
+        .restart-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 32px;
+            padding: 12px 24px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .restart-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-soft);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 88px 16px 32px;
+            }
+
+            .hero h1 {
+                font-size: 28px;
+            }
+
+            .hero p {
+                font-size: 16px;
+            }
+
+            .input-wrapper {
+                flex-direction: column;
+            }
+
+            .btn-primary {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .question-card {
+                padding: 24px;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .results-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 64px 24px;
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--border-light);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 28px;
+        }
+
+        .empty-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-desc {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">IS</div>
+            <span class="brand">Intent Search</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Hero Section -->
+        <section class="hero" id="heroSection">
+            <h1>描述你的需求，我们帮你找到答案</h1>
+            <p>输入任何需求，AI 将分析你的意图并生成个性化问题，最终为你搜索最相关的结果</p>
+        </section>
+
+        <!-- Input Section -->
+        <section class="input-section" id="inputSection">
+            <div class="input-wrapper">
+                <input 
+                    type="text" 
+                    class="input-field" 
+                    id="userInput"
+                    placeholder="例如：我想去日本旅游、买一台笔记本电脑、学习 Python..."
+                    autocomplete="off"
+                >
+                <button class="btn btn-primary" id="startBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                    开始
+                </button>
+            </div>
+        </section>
+
+        <!-- Intent Badge -->
+        <div class="intent-badge" id="intentBadge" style="display: none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span id="intentText">识别意图中...</span>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+
+        <!-- Question Flow -->
+        <section class="question-flow" id="questionFlow">
+            <div class="question-card">
+                <div class="question-header">
+                    <div class="question-icon" id="questionIcon">❓</div>
+                    <div>
+                        <div class="question-title" id="questionCategory">问题</div>
+                        <div class="question-subtitle" id="questionProgress">第 1 个问题</div>
+                    </div>
+                </div>
+                <div class="question-text" id="questionText">加载中...</div>
+                <div class="options-grid" id="optionsGrid"></div>
+                <div class="text-input-wrapper" id="textInputWrapper" style="display: none;">
+                    <input type="text" class="text-input" id="textAnswer" placeholder="请输入你的回答...">
+                </div>
+                <div class="question-actions">
+                    <button class="btn btn-secondary" id="skipBtn">跳过</button>
+                    <button class="btn btn-primary" id="nextBtn" disabled>下一步</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <section class="loading" id="loadingState">
+            <div class="spinner"></div>
+            <p class="loading-text">正在搜索相关信息...</p>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section" id="resultsSection">
+            <div class="results-header">
+                <h2 class="results-title">搜索结果</h2>
+                <span class="results-count" id="resultsCount">找到 0 个结果</span>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-title">搜索总结</div>
+                <div class="summary-content" id="summaryContent">根据你的需求生成的搜索...</div>
+            </div>
+
+            <div class="search-query" id="searchQuery">搜索: </div>
+
+            <div class="results-grid" id="resultsGrid"></div>
+
+            <button class="restart-btn" id="restartBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                重新开始
+            </button>
+        </section>
+    </main>
+
+    <script>
+        // 意图识别配置
+        const intentConfig = {
+            travel: {
+                name: '旅游出行',
+                icon: '✈️',
+                keywords: ['旅游', '旅行', '出行', '度假', '游玩', '景点', '酒店', '机票', '攻略', '日本', '泰国', '欧洲', '美国'],
+                questions: [
+                    { id: 'destination', text: '你想去哪里旅游？', type: 'text', icon: '📍' },
+                    { id: 'duration', text: '计划出行多长时间？', type: 'options', options: ['1-3天', '4-7天', '1-2周', '2周以上'], icon: '📅' },
+                    { id: 'budget', text: '你的预算范围是？', type: 'options', options: ['经济型', '舒适型', '豪华型', '不限'], icon: '💰' },
+                    { id: 'travelers', text: '和谁一起出行？', type: 'options', options: ['独自', '情侣', '家庭', '朋友'], icon: '👥' },
+                    { id: 'interests', text: '最感兴趣的活动？', type: 'options', options: ['美食', '购物', '文化', '自然', '冒险'], icon: '⭐' }
+                ]
+            },
+            shopping: {
+                name: '购物消费',
+                icon: '🛍️',
+                keywords: ['买', '购买', '购物', '推荐', '产品', '商品', '价格', '性价比', '电脑', '手机', '相机', '衣服', '鞋子'],
+                questions: [
+                    { id: 'category', text: '你想购买什么类型的商品？', type: 'options', options: ['电子产品', '服装', '家居', '美妆', '食品'], icon: '📦' },
+                    { id: 'budget', text: '你的预算范围？', type: 'options', options: ['500元以下', '500-2000元', '2000-5000元', '5000元以上'], icon: '💳' },
+                    { id: 'purpose', text: '主要用途是？', type: 'options', options: ['自用', '送礼', '办公', '娱乐'], icon: '🎯' },
+                    { id: 'priority', text: '最看重什么？', type: 'options', options: ['性价比', '品牌', '质量', '外观'], icon: '✨' }
+                ]
+            },
+            learning: {
+                name: '学习成长',
+                icon: '📚',
+                keywords: ['学习', '教程', '课程', '培训', '技能', '提升', '考试', '语言', '编程', 'Python', '英语', '考研'],
+                questions: [
+                    { id: 'subject', text: '你想学习什么？', type: 'text', icon: '📖' },
+                    { id: 'level', text: '你目前的水平？', type: 'options', options: ['零基础', '入门', '进阶', '高级'], icon: '📊' },
+                    { id: 'goal', text: '学习目标是？', type: 'options', options: ['兴趣爱好', '职业发展', '考试考证', '解决问题'], icon: '🎯' },
+                    { id: 'time', text: '每周可投入时间？', type: 'options', options: ['5小时以下', '5-10小时', '10-20小时', '20小时以上'], icon: '⏰' },
+                    { id: 'format', text: '偏好的学习方式？', type: 'options', options: ['视频课程', '书籍文档', '实战项目', '线上直播'], icon: '💻' }
+                ]
+            },
+            health: {
+                name: '健康生活',
+                icon: '💪',
+                keywords: ['健康', '健身', '减肥', '运动', '饮食', '营养', '瑜伽', '跑步', '健身房'],
+                questions: [
+                    { id: 'goal', text: '你的健康目标？', type: 'options', options: ['减脂', '增肌', '塑形', '健康维护'], icon: '🎯' },
+                    { id: 'experience', text: '运动经验？', type: 'options', options: ['新手', '偶尔运动', '经常运动', '专业'], icon: '🏃' },
+                    { id: 'location', text: '运动场所？', type: 'options', options: ['家里', '健身房', '户外', '不限'], icon: '📍' },
+                    { id: 'time', text: '每次可运动时长？', type: 'options', options: ['30分钟内', '30-60分钟', '1-2小时', '2小时以上'], icon: '⏱️' }
+                ]
+            },
+            food: {
+                name: '美食餐饮',
+                icon: '🍽️',
+                keywords: ['吃', '美食', '餐厅', '菜谱', '做饭', '外卖', '推荐', '火锅', '烧烤', '日料'],
+                questions: [
+                    { id: 'cuisine', text: '想吃什么菜系？', type: 'options', options: ['中餐', '日料', '韩餐', '西餐', '东南亚'], icon: '🍜' },
+                    { id: 'occasion', text: '用餐场合？', type: 'options', options: ['日常', '约会', '聚会', '商务'], icon: '🥂' },
+                    { id: 'budget', text: '人均预算？', type: 'options', options: ['50元以下', '50-100元', '100-200元', '200元以上'], icon: '💵' },
+                    { id: 'location', text: '所在城市？', type: 'text', icon: '🏙️' }
+                ]
+            },
+            general: {
+                name: '通用搜索',
+                icon: '🔍',
+                keywords: [],
+                questions: [
+                    { id: 'detail', text: '请提供更多细节', type: 'text', icon: '📝' },
+                    { id: 'context', text: '使用场景是？', type: 'options', options: ['个人', '工作', '学习', '其他'], icon: '🏢' }
+                ]
+            }
+        };
+
+        // 状态管理
+        let currentState = {
+            intent: null,
+            answers: {},
+            currentQuestionIndex: 0,
+            userInput: ''
+        };
+
+        // DOM 元素
+        const elements = {
+            userInput: document.getElementById('userInput'),
+            startBtn: document.getElementById('startBtn'),
+            intentBadge: document.getElementById('intentBadge'),
+            intentText: document.getElementById('intentText'),
+            progressBar: document.getElementById('progressBar'),
+            progressFill: document.getElementById('progressFill'),
+            questionFlow: document.getElementById('questionFlow'),
+            questionIcon: document.getElementById('questionIcon'),
+            questionCategory: document.getElementById('questionCategory'),
+            questionProgress: document.getElementById('questionProgress'),
+            questionText: document.getElementById('questionText'),
+            optionsGrid: document.getElementById('optionsGrid'),
+            textInputWrapper: document.getElementById('textInputWrapper'),
+            textAnswer: document.getElementById('textAnswer'),
+            nextBtn: document.getElementById('nextBtn'),
+            skipBtn: document.getElementById('skipBtn'),
+            loadingState: document.getElementById('loadingState'),
+            resultsSection: document.getElementById('resultsSection'),
+            resultsCount: document.getElementById('resultsCount'),
+            summaryContent: document.getElementById('summaryContent'),
+            searchQuery: document.getElementById('searchQuery'),
+            resultsGrid: document.getElementById('resultsGrid'),
+            restartBtn: document.getElementById('restartBtn')
+        };
+
+        // 识别意图
+        function detectIntent(input) {
+            const lowerInput = input.toLowerCase();
+            for (const [key, config] of Object.entries(intentConfig)) {
+                if (key === 'general') continue;
+                for (const keyword of config.keywords) {
+                    if (lowerInput.includes(keyword.toLowerCase())) {
+                        return key;
+                    }
+                }
+            }
+            return 'general';
+        }
+
+        // 开始流程
+        function startFlow() {
+            const input = elements.userInput.value.trim();
+            if (!input) {
+                elements.userInput.focus();
+                return;
+            }
+
+            currentState.userInput = input;
+            currentState.intent = detectIntent(input);
+            currentState.answers = {};
+            currentState.currentQuestionIndex = 0;
+
+            // 显示意图徽章
+            const intent = intentConfig[currentState.intent];
+            elements.intentText.textContent = `已识别：${intent.name} ${intent.icon}`;
+            elements.intentBadge.style.display = 'inline-flex';
+
+            // 隐藏输入区域，显示问题流程
+            document.getElementById('inputSection').style.display = 'none';
+            document.getElementById('heroSection').style.display = 'none';
+            elements.progressBar.style.display = 'block';
+            elements.questionFlow.classList.add('active');
+
+            showQuestion();
+        }
+
+        // 显示问题
+        function showQuestion() {
+            const intent = intentConfig[currentState.intent];
+            const questions = intent.questions;
+            const question = questions[currentState.currentQuestionIndex];
+
+            // 更新进度
+            const progress = ((currentState.currentQuestionIndex) / questions.length) * 100;
+            elements.progressFill.style.width = `${progress}%`;
+
+            // 更新问题内容
+            elements.questionIcon.textContent = question.icon;
+            elements.questionCategory.textContent = intent.name;
+            elements.questionProgress.textContent = `第 ${currentState.currentQuestionIndex + 1} / ${questions.length} 个问题`;
+            elements.questionText.textContent = question.text;
+
+            // 清空之前的选项
+            elements.optionsGrid.innerHTML = '';
+            elements.textInputWrapper.style.display = 'none';
+            elements.textAnswer.value = '';
+            elements.nextBtn.disabled = true;
+
+            // 根据问题类型显示不同输入方式
+            if (question.type === 'options') {
+                question.options.forEach(option => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.textContent = option;
+                    btn.onclick = () => selectOption(option, btn);
+                    elements.optionsGrid.appendChild(btn);
+                });
+            } else {
+                elements.textInputWrapper.style.display = 'block';
+                elements.textAnswer.focus();
+                elements.textAnswer.oninput = () => {
+                    elements.nextBtn.disabled = !elements.textAnswer.value.trim();
+                };
+                elements.textAnswer.onkeypress = (e) => {
+                    if (e.key === 'Enter' && elements.textAnswer.value.trim()) {
+                        nextQuestion();
+                    }
+                };
+            }
+
+            // 更新按钮文字
+            if (currentState.currentQuestionIndex === questions.length - 1) {
+                elements.nextBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    开始搜索
+                `;
+            } else {
+                elements.nextBtn.textContent = '下一步';
+            }
+        }
+
+        // 选择选项
+        function selectOption(option, btn) {
+            // 移除其他选中状态
+            elements.optionsGrid.querySelectorAll('.option-btn').forEach(b => {
+                b.classList.remove('selected');
+            });
+            btn.classList.add('selected');
+            elements.nextBtn.disabled = false;
+        }
+
+        // 获取当前答案
+        function getCurrentAnswer() {
+            const intent = intentConfig[currentState.intent];
+            const question = intent.questions[currentState.currentQuestionIndex];
+
+            if (question.type === 'options') {
+                const selected = elements.optionsGrid.querySelector('.option-btn.selected');
+                return selected ? selected.textContent : null;
+            } else {
+                return elements.textAnswer.value.trim();
+            }
+        }
+
+        // 下一题
+        function nextQuestion() {
+            const answer = getCurrentAnswer();
+            if (!answer) return;
+
+            const intent = intentConfig[currentState.intent];
+            const question = intent.questions[currentState.currentQuestionIndex];
+            currentState.answers[question.id] = answer;
+
+            currentState.currentQuestionIndex++;
+
+            if (currentState.currentQuestionIndex < intent.questions.length) {
+                showQuestion();
+            } else {
+                finishQuestions();
+            }
+        }
+
+        // 跳过问题
+        function skipQuestion() {
+            currentState.currentQuestionIndex++;
+            const intent = intentConfig[currentState.intent];
+
+            if (currentState.currentQuestionIndex < intent.questions.length) {
+                showQuestion();
+            } else {
+                finishQuestions();
+            }
+        }
+
+        // 完成问题，开始搜索
+        function finishQuestions() {
+            elements.progressFill.style.width = '100%';
+            elements.questionFlow.classList.remove('active');
+            elements.loadingState.classList.add('active');
+
+            // 构造搜索查询
+            const searchQuery = buildSearchQuery();
+
+            // 模拟搜索延迟
+            setTimeout(() => {
+                performSearch(searchQuery);
+            }, 1500);
+        }
+
+        // 构造搜索查询
+        function buildSearchQuery() {
+            const intent = intentConfig[currentState.intent];
+            const answers = currentState.answers;
+            let query = currentState.userInput;
+
+            // 根据意图和答案优化查询
+            switch (currentState.intent) {
+                case 'travel':
+                    query = `${answers.destination || ''}旅游攻略`;
+                    if (answers.duration) query += ` ${answers.duration}`;
+                    if (answers.interests) query += ` ${answers.interests}`;
+                    break;
+                case 'shopping':
+                    query = currentState.userInput;
+                    if (answers.category) query = `${answers.category}推荐`;
+                    if (answers.budget) query += ` ${answers.budget}`;
+                    if (answers.priority) query += ` ${answers.priority}`;
+                    break;
+                case 'learning':
+                    query = `${answers.subject || currentState.userInput}教程`;
+                    if (answers.level) query += ` ${answers.level}`;
+                    if (answers.format) query += ` ${answers.format}`;
+                    break;
+                case 'health':
+                    query = `${answers.goal || '健身'}计划`;
+                    if (answers.location) query += ` ${answers.location}`;
+                    if (answers.experience) query += ` ${answers.experience}`;
+                    break;
+                case 'food':
+                    query = `${answers.location || ''}${answers.cuisine || '美食'}推荐`;
+                    if (answers.occasion) query += ` ${answers.occasion}`;
+                    break;
+            }
+
+            return query.trim();
+        }
+
+        // 执行搜索
+        function performSearch(query) {
+            elements.loadingState.classList.remove('active');
+            elements.resultsSection.classList.add('active');
+
+            // 生成模拟搜索结果
+            const results = generateMockResults(query);
+
+            // 显示搜索查询
+            elements.searchQuery.textContent = `搜索: "${query}"`;
+
+            // 显示总结
+            const intent = intentConfig[currentState.intent];
+            elements.summaryContent.textContent = 
+                `根据你对「${intent.name}」的需求，我们为你搜索了「${query}」。基于你的偏好（${Object.values(currentState.answers).slice(0, 3).join('、')}），以下是相关结果。`;
+
+            // 显示结果
+            elements.resultsCount.textContent = `找到 ${results.length} 个结果`;
+            elements.resultsGrid.innerHTML = '';
+
+            results.forEach((result, index) => {
+                const card = createResultCard(result);
+                // 添加延迟动画
+                setTimeout(() => {
+                    elements.resultsGrid.appendChild(card);
+                }, index * 100);
+            });
+
+            // 滚动到结果区域
+            elements.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // 生成模拟搜索结果
+        function generateMockResults(query) {
+            const domains = [
+                { name: 'zhihu.com', favicon: 'https://www.zhihu.com/favicon.ico' },
+                { name: 'xiaohongshu.com', favicon: 'https://www.xiaohongshu.com/favicon.ico' },
+                { name: 'douban.com', favicon: 'https://www.douban.com/favicon.ico' },
+                { name: 'weibo.com', favicon: 'https://weibo.com/favicon.ico' },
+                { name: 'jianshu.com', favicon: 'https://www.jianshu.com/favicon.ico' },
+                { name: 'bilibili.com', favicon: 'https://www.bilibili.com/favicon.ico' },
+                { name: 'baidu.com', favicon: 'https://www.baidu.com/favicon.ico' },
+                { name: 'sina.com.cn', favicon: 'https://www.sina.com.cn/favicon.ico' }
+            ];
+
+            const templates = {
+                travel: [
+                    { title: `${query}完整攻略：必去景点+美食推荐`, desc: '详细整理了当地最值得去的景点和必吃美食，包含交通指南和住宿建议，帮你规划完美行程。', tags: ['攻略', '景点', '美食'] },
+                    { title: `${query}自由行指南：预算${currentState.answers.budget || '舒适型'}方案`, desc: '根据你的预算需求，提供最合适的住宿、交通和餐饮建议，让旅行更轻松。', tags: ['自由行', '预算', '攻略'] },
+                    { title: `${query}避坑指南：本地人推荐的隐藏玩法`, desc: '避开游客陷阱，体验最地道的当地文化。包含小众景点和本地人最爱的餐厅。', tags: ['避坑', '本地人', '深度游'] },
+                    { title: `${query}最佳旅行时间：季节选择建议`, desc: '分析全年气候和节庆活动，帮你选择最适合的出行时间。', tags: ['最佳时间', '季节', '气候'] }
+                ],
+                shopping: [
+                    { title: `2024年${query}排行榜：性价比之选`, desc: '综合性能、价格、用户评价，为你推荐最值得购买的产品。', tags: ['排行榜', '性价比', '推荐'] },
+                    { title: `${query}选购指南：${currentState.answers.priority || '性价比'}优先`, desc: '根据你的需求，详细分析各品牌优缺点，提供购买建议。', tags: ['选购', '指南', '对比'] },
+                    { title: `${query}真实测评：使用体验分享`, desc: '真实用户长期使用体验，包含优缺点分析和购买建议。', tags: ['测评', '体验', '真实'] },
+                    { title: `${query}优惠信息：哪里买最划算`, desc: '汇总各大平台优惠活动，帮你找到最划算的购买渠道。', tags: ['优惠', '比价', '购买'] }
+                ],
+                learning: [
+                    { title: `${query}入门到精通：完整学习路线`, desc: '从零基础到进阶的完整学习路径，包含推荐资源和练习项目。', tags: ['学习路线', '入门', '进阶'] },
+                    { title: `${query}优质课程推荐：${currentState.answers.format || '视频'}为主`, desc: '精选高质量学习资源，适合你的学习方式和时间安排。', tags: ['课程', '推荐', '资源'] },
+                    { title: `${query}实战经验分享：项目案例解析`, desc: '通过实际项目案例学习，快速提升实战能力。', tags: ['实战', '项目', '案例'] },
+                    { title: `${query}学习社区：找到学习伙伴`, desc: '加入活跃的学习社区，与志同道合的人一起进步。', tags: ['社区', '交流', '伙伴'] }
+                ],
+                health: [
+                    { title: `${query}科学指南：${currentState.answers.experience || '新手'}友好`, desc: '根据你的运动经验，制定合适的训练计划和饮食建议。', tags: ['科学', '计划', '饮食'] },
+                    { title: `${query}常见误区：避免这些错误`, desc: '总结初学者常犯的错误，帮助你更安全有效地达成目标。', tags: ['误区', '安全', '正确'] },
+                    { title: `${query}装备推荐：${currentState.answers.location || '家里'}运动必备`, desc: '推荐适合你的运动装备，让训练更加高效舒适。', tags: ['装备', '推荐', '必备'] },
+                    { title: `${query}成功案例：他们的改变故事`, desc: '真实用户的健身历程，激励你坚持自己的目标。', tags: ['案例', '激励', '改变'] }
+                ],
+                food: [
+                    { title: `${query}必吃榜单：本地人推荐`, desc: '精选当地最受欢迎的餐厅和招牌菜，让你吃得地道。', tags: ['必吃', '推荐', '地道'] },
+                    { title: `${query}探店实录：真实体验分享`, desc: '实地探访多家餐厅，为你提供最真实的美食体验报告。', tags: ['探店', '实拍', '体验'] },
+                    { title: `${query}隐藏美食：小巷里的惊喜`, desc: '发掘那些不为人知但味道绝佳的小店，体验真正的美食文化。', tags: ['隐藏', '小店', '惊喜'] },
+                    { title: `${query}预订攻略：如何避免排队`, desc: '热门餐厅预订技巧和最佳用餐时间建议，让用餐更顺畅。', tags: ['预订', '攻略', '排队'] }
+                ]
+            };
+
+            const defaultTemplates = [
+                { title: `${query}相关信息汇总`, desc: '整理了关于该话题的最新信息和资源，帮助你快速了解相关内容。', tags: ['汇总', '信息', '资源'] },
+                { title: `${query}深度解析：你需要知道的一切`, desc: '全面分析该话题的各个方面，提供专业且易懂的内容。', tags: ['深度', '解析', '全面'] },
+                { title: `${query}最新动态：2024年更新`, desc: '汇总最新的相关动态和趋势，让你掌握最新信息。', tags: ['最新', '动态', '趋势'] },
+                { title: `${query}实用技巧：提高效率的方法`, desc: '分享实用的技巧和方法，帮助你更好地处理相关事务。', tags: ['技巧', '效率', '实用'] }
+            ];
+
+            const resultTemplates = templates[currentState.intent] || defaultTemplates;
+
+            return resultTemplates.map((template, index) => {
+                const domain = domains[index % domains.length];
+                return {
+                    ...template,
+                    url: `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`,
+                    domain: domain.name,
+                    favicon: domain.favicon
+                };
+            });
+        }
+
+        // 创建结果卡片
+        function createResultCard(result) {
+            const card = document.createElement('a');
+            card.className = 'result-card';
+            card.href = result.url;
+            card.target = '_blank';
+            card.rel = 'noopener noreferrer';
+
+            const tagsHtml = result.tags.map(tag => `<span class="result-tag">${tag}</span>`).join('');
+
+            card.innerHTML = `
+                <div class="result-header">
+                    <img class="result-favicon" src="${result.favicon}" alt="" onerror="this.style.display='none'">
+                    <div class="result-meta">
+                        <div class="result-url">${result.domain}</div>
+                    </div>
+                </div>
+                <h3 class="result-title">${result.title}</h3>
+                <p class="result-desc">${result.desc}</p>
+                <div class="result-tags">${tagsHtml}</div>
+            `;
+
+            return card;
+        }
+
+        // 重新开始
+        function restart() {
+            currentState = {
+                intent: null,
+                answers: {},
+                currentQuestionIndex: 0,
+                userInput: ''
+            };
+
+            elements.userInput.value = '';
+            elements.intentBadge.style.display = 'none';
+            elements.progressBar.style.display = 'none';
+            elements.questionFlow.classList.remove('active');
+            elements.loadingState.classList.remove('active');
+            elements.resultsSection.classList.remove('active');
+            document.getElementById('inputSection').style.display = 'block';
+            document.getElementById('heroSection').style.display = 'block';
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 事件监听
+        elements.startBtn.addEventListener('click', startFlow);
+        elements.userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') startFlow();
+        });
+        elements.nextBtn.addEventListener('click', nextQuestion);
+        elements.skipBtn.addEventListener('click', skipQuestion);
+        elements.restartBtn.addEventListener('click', restart);
+
+        // 输入框焦点
+        elements.userInput.focus();
+    </script>
+</body>
+</html>
