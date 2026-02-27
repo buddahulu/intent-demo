@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能意图识别助手</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn {
+      animation: fadeIn 0.5s ease-out forwards;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); opacity: 0.5; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2s ease-out infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .animate-bounce-custom {
+      animation: bounce 2s ease-in-out infinite;
+    }
+    .option-card:hover {
+      transform: translateY(-2px);
+    }
+    .option-card:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="bg-[#FAFBFC] min-h-screen">
+  <div id="app"></div>
+
+  <script>
+    // ============ 状态管理 ============
+    const state = {
+      currentPage: 'entry',
+      userInput: '',
+      analysis: null,
+      answers: {},
+      currentQuestion: null,
+      isLoading: false,
+      questionHistory: []
+    };
+
+    // ============ 页面渲染 ============
+    function render() {
+      const app = document.getElementById('app');
+      app.innerHTML = '';
+      
+      switch (state.currentPage) {
+        case 'entry':
+          app.appendChild(renderEntryPage());
+          break;
+        case 'analyzing':
+          app.appendChild(renderAnalyzingPage());
+          break;
+        case 'question':
+          app.appendChild(renderQuestionPage());
+          break;
+        case 'result':
+          app.appendChild(renderResultPage());
+          break;
+      }
+    }
+
+    // ============ 首页 ============
+    function renderEntryPage() {
+      const container = document.createElement('div');
+      container.className = 'min-h-screen flex flex-col items-center justify-center px-6 animate-fadeIn';
+      
+      const examples = [
+        '计划带家人去日本京都玩一周',
+        '想买一台适合视频剪辑的MacBook',
+        '零基础学习Python编程',
+      ];
+      
+      container.innerHTML = `
+        <div class="mb-10">
+          <div class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <i class="fas fa-sparkles text-white text-xl"></i>
+          </div>
+        </div>
+        
+        <h1 class="text-4xl font-semibold text-gray-900 mb-3 text-center tracking-tight">
+          智能助手
+        </h1>
+        <p class="text-gray-500 text-center mb-12 text-lg">
+          告诉我你想做什么，AI 帮你找到最佳方案
+        </p>
+        
+        <div class="w-full max-w-2xl">
+          <div class="relative group">
+            <textarea
+              id="userInput"
+              placeholder="描述你的需求..."
+              class="w-full h-28 p-5 pr-14 bg-white rounded-2xl border border-gray-200 
+                     text-gray-900 placeholder-gray-400 resize-none text-base
+                     focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                     shadow-sm transition-all duration-200"
+            >${state.userInput}</textarea>
+            <button
+              id="startBtn"
+              class="absolute bottom-4 right-4 w-9 h-9 bg-gray-900 rounded-lg
+                     flex items-center justify-center
+                     hover:bg-gray-800 active:scale-95
+                     disabled:opacity-30 disabled:cursor-not-allowed
+                     transition-all duration-200"
+            >
+              <i class="fas fa-arrow-right text-white text-sm"></i>
+            </button>
+          </div>
+          
+          <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <span class="text-sm text-gray-400">试试：</span>
+            ${examples.map((ex, i) => `
+              <button
+                class="example-btn px-4 py-2 bg-white border border-gray-200 rounded-full
+                       text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600
+                       transition-all duration-200"
+                data-example="${ex}"
+              >
+                ${ex}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+        
+        <div class="absolute bottom-8 text-sm text-gray-400">
+          按 Enter 快速开始
+        </div>
+      `;
+      
+      // 事件绑定
+      const textarea = container.querySelector('#userInput');
+      const startBtn = container.querySelector('#startBtn');
+      
+      textarea.addEventListener('input', (e) => {
+        state.userInput = e.target.value;
+        startBtn.disabled = !state.userInput.trim();
+      });
+      
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && state.userInput.trim()) {
+          e.preventDefault();
+          startAnalysis();
+        }
+      });
+      
+      startBtn.addEventListener('click', startAnalysis);
+      
+      container.querySelectorAll('.example-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.userInput = btn.dataset.example;
+          textarea.value = state.userInput;
+          startBtn.disabled = false;
+        });
+      });
+      
+      return container;
+    }
+
+    function startAnalysis() {
+      if (!state.userInput.trim()) return;
+      state.currentPage = 'analyzing';
+      render();
+      performAnalysis();
+    }
+
+    // ============ AI 分析页面 ============
+    function renderAnalyzingPage() {
+      const container = document.createElement('div');
+      container.className = 'min-h-screen flex flex-col items-center justify-center px-6 animate-fadeIn';
+      
+      container.innerHTML = `
+        <button id="backBtn" class="absolute top-6 left-6 w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
+          <i class="fas fa-arrow-left text-gray-500"></i>
+        </button>
+        
+        <div class="text-center">
+          <div class="relative w-24 h-24 mx-auto mb-8">
+            <div class="absolute inset-0 bg-blue-500/10 rounded-full animate-pulse-ring"></div>
+            <div class="relative w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-xl shadow-blue-500/30">
+              <i class="fas fa-brain text-white text-3xl"></i>
+            </div>
+            <div class="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center animate-bounce-custom" style="animation-delay: 0s;">
+              <i class="fas fa-sparkles text-amber-500 text-sm"></i>
+            </div>
+            <div class="absolute -bottom-1 -left-3 w-7 h-7 bg-white rounded-full shadow-lg flex items-center justify-center animate-bounce-custom" style="animation-delay: 0.5s;">
+              <i class="fas fa-lightbulb text-yellow-500 text-xs"></i>
+            </div>
+            <div class="absolute top-1/2 -right-4 w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center animate-bounce-custom" style="animation-delay: 1s;">
+              <i class="fas fa-bullseye text-blue-500 text-xs"></i>
+            </div>
+          </div>
+          
+          <h2 class="text-2xl font-semibold text-gray-900 mb-2">AI 正在深度分析</h2>
+          <p id="statusText" class="text-gray-500 mb-8">正在理解你的需求...</p>
+          
+          <div class="w-64 h-2 bg-gray-100 rounded-full overflow-hidden mb-8">
+            <div id="progressBar" class="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          
+          <div id="analysisSteps" class="space-y-2"></div>
+          
+          <div class="mt-10 max-w-md mx-auto">
+            <div class="bg-white/50 rounded-xl p-4 border border-gray-100">
+              <p class="text-xs text-gray-400 mb-1">你的需求</p>
+              <p class="text-sm text-gray-700 line-clamp-2">${state.userInput}</p>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      container.querySelector('#backBtn').addEventListener('click', () => {
+        state.currentPage = 'entry';
+        render();
+      });
+      
+      return container;
+    }
+
+    async function performAnalysis() {
+      const steps = [
+        { progress: 20, text: '正在理解需求...', step: '识别意图类型' },
+        { progress: 40, text: '提取关键信息...', step: '分析预算范围' },
+        { progress: 60, text: '分析偏好特征...', step: '识别时间要求' },
+        { progress: 80, text: '生成问题链...', step: '构建个性化问题' },
+        { progress: 100, text: '分析完成！', step: '准备就绪' },
+      ];
+
+      for (const step of steps) {
+        await new Promise(r => setTimeout(r, 600));
+        const progressBar = document.getElementById('progressBar');
+        const statusText = document.getElementById('statusText');
+        const analysisSteps = document.getElementById('analysisSteps');
+        
+        if (progressBar) progressBar.style.width = `${step.progress}%`;
+        if (statusText) statusText.textContent = step.text;
+        if (analysisSteps) {
+          analysisSteps.innerHTML += `
+            <div class="flex items-center gap-2 text-sm text-gray-500 animate-fadeIn">
+              <div class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-check text-green-600 text-xs"></i>
+              </div>
+              <span>${step.step}</span>
+            </div>
+          `;
+        }
+      }
+
+      // 执行分析
+      state.analysis = analyzeIntent(state.userInput);
+      await new Promise(r => setTimeout(r, 500));
+      
+      state.currentPage = 'question';
+      state.currentQuestion = generateNextQuestion();
+      render();
+    }
+
+    // ============ 问题页面 ============
+    function renderQuestionPage() {
+      const container = document.createElement('div');
+      container.className = 'min-h-screen flex flex-col px-6 py-12 animate-fadeIn';
+      
+      const progress = Math.min((Object.keys(state.answers).length) * 20, 80);
+      const question = state.currentQuestion;
+      
+      if (!question) {
+        state.currentPage = 'result';
+        render();
+        return container;
+      }
+      
+      container.innerHTML = `
+        <div class="max-w-xl mx-auto w-full mb-8">
+          <div class="flex items-center gap-4 mb-6">
+            <button id="backBtn" class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
+              <i class="fas fa-arrow-left text-gray-500"></i>
+            </button>
+            <div class="flex-1">
+              <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width: ${progress}%"></div>
+              </div>
+            </div>
+            <span class="text-sm text-gray-400 w-12 text-right">${Math.round(progress)}%</span>
+          </div>
+          
+          <div class="flex items-center gap-2 mb-4">
+            <span class="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
+              ${state.analysis?.intent?.label || '智能分析'}
+            </span>
+            ${Object.keys(state.analysis?.extractedInfo || {}).length > 0 ? `
+              <span class="text-xs text-gray-400">已提取 ${Object.keys(state.analysis.extractedInfo).length} 个关键信息</span>
+            ` : ''}
+          </div>
+        </div>
+        
+        <div class="flex-1 flex flex-col justify-center max-w-xl mx-auto w-full">
+          <div class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2 leading-tight">${question.question}</h2>
+            ${question.subtitle ? `<p class="text-gray-500">${question.subtitle}</p>` : ''}
+          </div>
+          
+          <div class="space-y-3">
+            ${question.options.map((opt, idx) => `
+              <button
+                class="option-card w-full p-5 bg-white rounded-xl border-2 border-gray-200
+                       text-left hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10
+                       transition-all duration-200 group"
+                data-value="${opt.value}"
+              >
+                <div class="flex items-center gap-4">
+                  <span class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center
+                               text-base font-bold text-gray-600
+                               group-hover:bg-blue-500 group-hover:text-white
+                               transition-colors">
+                    ${opt.letter}
+                  </span>
+                  <span class="text-gray-900 font-medium text-base">${opt.label}</span>
+                </div>
+              </button>
+            `).join('')}
+          </div>
+          
+          ${Object.keys(state.answers).length > 0 ? `
+            <div class="mt-10 pt-6 border-t border-gray-100">
+              <p class="text-xs text-gray-400 mb-3">已回答</p>
+              <div class="flex flex-wrap gap-2">
+                ${Object.entries(state.answers).map(([k, v]) => `
+                  <span class="px-3 py-1.5 bg-gray-50 text-gray-600 text-sm rounded-lg">${v}</span>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      container.querySelector('#backBtn').addEventListener('click', () => {
+        const keys = Object.keys(state.answers);
+        if (keys.length > 0) {
+          const newAnswers = { ...state.answers };
+          delete newAnswers[keys[keys.length - 1]];
+          state.answers = newAnswers;
+          if (state.questionHistory.length > 1) {
+            state.questionHistory.pop();
+            state.currentQuestion = state.questionHistory[state.questionHistory.length - 1];
+          } else {
+            state.currentQuestion = generateNextQuestion();
+          }
+          render();
+        } else {
+          state.currentPage = 'entry';
+          state.analysis = null;
+          state.answers = {};
+          state.questionHistory = [];
+          render();
+        }
+      });
+      
+      container.querySelectorAll('.option-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const value = btn.dataset.value;
+          state.answers[state.currentQuestion.id] = value;
+          
+          const nextQuestion = generateNextQuestion();
+          if (nextQuestion) {
+            state.currentQuestion = nextQuestion;
+            state.questionHistory.push(nextQuestion);
+            render();
+          } else {
+            state.currentPage = 'result';
+            render();
+          }
+        });
+      });
+      
+      return container;
+    }
+
+    // ============ 结果页面 ============
+    function renderResultPage() {
+      const container = document.createElement('div');
+      container.className = 'min-h-screen px-6 py-12 animate-fadeIn';
+      
+      const searchQuery = buildSearchQuery();
+      const results = generateResults();
+      
+      container.innerHTML = `
+        <div class="max-w-6xl mx-auto">
+          <div class="flex items-center justify-between mb-10">
+            <div>
+              <h1 class="text-3xl font-semibold text-gray-900 mb-2">搜索结果</h1>
+              <p class="text-gray-500">${results.summary}</p>
+            </div>
+            <button id="restartBtn" class="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
+              <i class="fas fa-redo text-sm"></i>
+              <span>重新开始</span>
+            </button>
+          </div>
+          
+          <div class="flex flex-wrap gap-2 mb-12">
+            ${state.analysis?.intent?.label ? `
+              <span class="px-4 py-2 bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-full">${state.analysis.intent.label}</span>
+            ` : ''}
+            ${Object.entries(state.answers).map(([k, v]) => `
+              <span class="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-full">${v}</span>
+            `).join('')}
+          </div>
+          
+          ${results.sections.map(section => `
+            <section class="mb-14">
+              <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 ${section.bgColor} rounded-xl flex items-center justify-center">
+                  <i class="fas ${section.icon} ${section.iconColor} text-lg"></i>
+                </div>
+                <div>
+                  <h2 class="text-xl font-semibold text-gray-900">${section.title}</h2>
+                  <p class="text-sm text-gray-400">${section.subtitle}</p>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                ${section.items.map(item => `
+                  <div class="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300">
+                    <div class="aspect-[16/10] bg-gray-100 relative overflow-hidden">
+                      <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/400x250'">
+                      ${item.tags ? `
+                        <div class="absolute top-3 left-3 flex gap-1">
+                          ${item.tags.slice(0, 2).map((tag, i) => `
+                            <span class="px-2 py-1 bg-black/60 text-white text-xs rounded-full">${tag}</span>
+                          `).join('')}
+                        </div>
+                      ` : ''}
+                    </div>
+                    <div class="p-4">
+                      <div class="flex items-start justify-between mb-2">
+                        <h3 class="font-semibold text-gray-900 text-lg">${item.name}</h3>
+                        ${item.rating ? `
+                          <div class="flex items-center gap-1 text-amber-500">
+                            <i class="fas fa-star text-xs"></i>
+                            <span class="font-medium text-sm">${item.rating}</span>
+                          </div>
+                        ` : ''}
+                      </div>
+                      <p class="text-gray-500 text-sm mb-3 line-clamp-2">${item.description}</p>
+                      
+                      ${item.location ? `
+                        <div class="flex items-center gap-1 text-sm text-gray-400 mb-2">
+                          <i class="fas fa-map-marker-alt text-xs"></i>
+                          <span>${item.location}</span>
+                        </div>
+                      ` : ''}
+                      
+                      ${item.price ? `
+                        <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+                          <span class="text-sm font-medium text-gray-900">${item.price}</span>
+                          ${item.reviews ? `<span class="text-xs text-gray-400">${item.reviews.toLocaleString()}条评价</span>` : ''}
+                        </div>
+                      ` : ''}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </section>
+          `).join('')}
+          
+          
+          <div class="mt-20 pt-8 border-t border-gray-100 text-center">
+            <p class="text-gray-400 text-sm">搜索结果基于你的个性化需求生成 · ${new Date().toLocaleDateString()}</p>
+          </div>
+        </div>
+      `;
+      
+      container.querySelector('#restartBtn').addEventListener('click', () => {
+        state.currentPage = 'entry';
+        state.userInput = '';
+        state.analysis = null;
+        state.answers = {};
+        state.currentQuestion = null;
+        state.questionHistory = [];
+        render();
+      });
+      
+      return container;
+    }
+
+    // ============ 核心逻辑 ============
+    function analyzeIntent(input) {
+      const lowerInput = input.toLowerCase();
+      
+      let intentType = 'general';
+      let intentLabel = '通用咨询';
+      
+      if (/买|购|电脑|手机|相机|商品|产品|价格|多少钱/.test(lowerInput)) {
+        intentType = 'shopping';
+        intentLabel = '商品采购';
+      } else if (/旅|游|玩|去|行程|酒店|机票|景点|度假|攻略/.test(lowerInput)) {
+        intentType = 'travel';
+        intentLabel = '旅行规划';
+      } else if (/学|课|教程|培训|技能|考试|证书/.test(lowerInput)) {
+        intentType = 'learning';
+        intentLabel = '学习培训';
+      } else if (/病|医|药|健康|症状|检查|医院/.test(lowerInput)) {
+        intentType = 'health';
+        intentLabel = '健康医疗';
+      } else if (/命|运|势|八字|塔罗|星座|占卜|算命|运势/.test(lowerInput)) {
+        intentType = 'divination';
+        intentLabel = '命理咨询';
+      }
+
+      const extractedInfo = {};
+      
+      const destMatch = input.match(/(日本|京都|东京|大阪|北海道|冲绳|三亚|云南|泰国|新加坡|韩国)/);
+      if (destMatch) extractedInfo.destination = destMatch[1];
+      
+      const budgetMatch = input.match(/(\d+)元|(\d+)块|预算[\s]*(\d+)/);
+      if (budgetMatch) extractedInfo.budget = (budgetMatch[1] || budgetMatch[2] || budgetMatch[3]) + '元';
+      
+      const timeMatch = input.match(/(\d+)[天|日|周|月]|一周|一个月|周末/);
+      if (timeMatch) extractedInfo.time = timeMatch[0];
+      
+      const peopleMatch = input.match(/(\d+)[人|个]|家人|朋友|情侣|夫妻|独自|一个人/);
+      if (peopleMatch) extractedInfo.people = peopleMatch[0];
+      
+      const purposeMatch = input.match(/视频剪辑|编程|办公|游戏|学习/);
+      if (purposeMatch) extractedInfo.purpose = purposeMatch[0];
+
+      return {
+        intent: { type: intentType, label: intentLabel, description: 'AI分析结果' },
+        extractedInfo,
+        suggestedQuestions: []
+      };
+    }
+
+    function generateNextQuestion() {
+      const answeredKeys = Object.keys(state.answers);
+      const intent = state.analysis?.intent?.type || 'general';
+      const extractedInfo = state.analysis?.extractedInfo || {};
+      
+      // 旅游问题
+      if (intent === 'travel') {
+        if (!answeredKeys.includes('destination')) {
+          const dest = extractedInfo.destination;
+          if (dest && /日本|京都|东京|大阪/.test(dest)) {
+            const destOptions = {
+              '日本': [
+                { label: '京都 - 古都文化、寺庙神社', value: '京都', letter: 'A' },
+                { label: '东京 - 现代都市、购物美食', value: '东京', letter: 'B' },
+                { label: '大阪 - 美食之都、环球影城', value: '大阪', letter: 'C' },
+                { label: '北海道 - 自然风光、温泉滑雪', value: '北海道', letter: 'D' },
+              ],
+              '京都': [
+                { label: '经典路线 - 清水寺、金阁寺、伏见稻荷', value: '经典路线', letter: 'A' },
+                { label: '深度文化 - 茶道、和服、寺庙住宿', value: '深度文化', letter: 'B' },
+                { label: '美食之旅 - 怀石料理、抹茶、锦市场', value: '美食之旅', letter: 'C' },
+                { label: '周边探索 - 岚山、宇治、奈良一日游', value: '周边探索', letter: 'D' },
+              ]
+            };
+            return {
+              id: 'destination',
+              question: `你想如何体验${dest}？`,
+              subtitle: 'AI 根据你的需求推荐了以下玩法',
+              options: destOptions[dest] || destOptions['日本']
+            };
+          }
+          return {
+            id: 'destination',
+            question: '你想去哪里旅游？',
+            subtitle: '选择你的目的地类型',
+            options: [
+              { label: '国内热门城市', value: '国内热门', letter: 'A' },
+              { label: '国内小众景点', value: '国内小众', letter: 'B' },
+              { label: '日韩东南亚', value: '亚洲周边', letter: 'C' },
+              { label: '欧洲美洲', value: '欧美长途', letter: 'D' },
+            ]
+          };
+        }
+        
+        if (!answeredKeys.includes('duration')) {
+          return {
+            id: 'duration',
+            question: `计划在${state.answers.destination || '目的地'}玩几天？`,
+            subtitle: '行程天数影响推荐内容',
+            options: [
+              { label: '2-3天 精华游', value: '2-3天', letter: 'A' },
+              { label: '4-5天 深度游', value: '4-5天', letter: 'B' },
+              { label: '一周 慢旅行', value: '一周', letter: 'C' },
+              { label: '十天以上 探索游', value: '十天以上', letter: 'D' },
+            ]
+          };
+        }
+        
+        if (!answeredKeys.includes('budget')) {
+          return {
+            id: 'budget',
+            question: '你的旅行预算是多少？',
+            subtitle: '包含机票、住宿、餐饮、交通',
+            options: [
+              { label: '经济型 - 5000元以下', value: '预算5000以下', letter: 'A' },
+              { label: '舒适型 - 5000-10000元', value: '预算5000-10000', letter: 'B' },
+              { label: '品质型 - 10000-20000元', value: '预算10000-20000', letter: 'C' },
+              { label: '豪华型 - 20000元以上', value: '预算20000以上', letter: 'D' },
+            ]
+          };
+        }
+        
+        if (!answeredKeys.includes('style')) {
+          const dest = state.answers.destination;
+          const styleOptions = {
+            '京都': [
+              { label: '文化体验 - 寺庙、茶道、和服', value: '文化体验', letter: 'A' },
+              { label: '美食之旅 - 怀石料理、抹茶甜品', value: '美食之旅', letter: 'B' },
+              { label: '摄影打卡 - 樱花、红叶、古建筑', value: '摄影打卡', letter: 'C' },
+              { label: '休闲放松 - 温泉、庭院、慢生活', value: '休闲度假', letter: 'D' },
+            ],
+            '东京': [
+              { label: '购物血拼 - 潮牌、药妆、电子产品', value: '购物', letter: 'A' },
+              { label: '美食探索 - 寿司、拉面、居酒屋', value: '美食之旅', letter: 'B' },
+              { label: '城市观光 - 塔、神社、博物馆', value: '城市观光', letter: 'C' },
+              { label: '主题乐园 - 迪士尼、海贼王', value: '主题乐园', letter: 'D' },
+            ],
+          };
+          return {
+            id: 'style',
+            question: `你想怎么玩${dest || '目的地'}？`,
+            subtitle: '选择最吸引你的旅行方式',
+            options: styleOptions[dest] || styleOptions['京都']
+          };
+        }
+        
+        if (!answeredKeys.includes('companion')) {
+          return {
+            id: 'companion',
+            question: '和谁一起出行？',
+            subtitle: '不同的同伴有不同的推荐重点',
+            options: [
+              { label: '独自一人', value: '独自', letter: 'A' },
+              { label: '情侣/夫妻', value: '情侣', letter: 'B' },
+              { label: '朋友结伴', value: '朋友', letter: 'C' },
+              { label: '家庭亲子', value: '亲子', letter: 'D' },
+            ]
+          };
+        }
+      }
+      
+      // 购物问题
+      if (intent === 'shopping') {
+        if (!answeredKeys.includes('category')) {
+          if (/macbook|电脑|笔记本/i.test(state.userInput)) {
+            return {
+              id: 'category',
+              question: '你主要用电脑做什么？',
+              subtitle: '不同用途需要不同的配置',
+              options: [
+                { label: '办公文档、上网浏览', value: '办公', letter: 'A' },
+                { label: '视频剪辑、设计创作', value: '创作', letter: 'B' },
+                { label: '游戏娱乐', value: '游戏', letter: 'C' },
+                { label: '编程开发', value: '开发', letter: 'D' },
+              ]
+            };
+          }
+          return {
+            id: 'category',
+            question: '你想购买什么类型的商品？',
+            options: [
+              { label: '数码电子', value: '数码电子', letter: 'A' },
+              { label: '服装配饰', value: '服装配饰', letter: 'B' },
+              { label: '家居用品', value: '家居用品', letter: 'C' },
+              { label: '美妆护肤', value: '美妆护肤', letter: 'D' },
+            ]
+          };
+        }
+        
+        if (!answeredKeys.includes('budget')) {
+          return {
+            id: 'budget',
+            question: '你的预算是多少？',
+            options: [
+              { label: '3000元以下', value: '预算3000以下', letter: 'A' },
+              { label: '3000-6000元', value: '预算3000-6000', letter: 'B' },
+              { label: '6000-10000元', value: '预算6000-10000', letter: 'C' },
+              { label: '10000元以上', value: '预算10000以上', letter: 'D' },
+            ]
+          };
+        }
+        
+        if (!answeredKeys.includes('priority')) {
+          return {
+            id: 'priority',
+            question: '你最看重什么？',
+            options: [
+              { label: '性价比', value: '性价比', letter: 'A' },
+              { label: '品牌口碑', value: '品牌', letter: 'B' },
+              { label: '功能性能', value: '性能', letter: 'C' },
+              { label: '外观设计', value: '外观', letter: 'D' },
+            ]
+          };
+        }
+      }
+      
+      // 学习问题
+      if (intent === 'learning') {
+        if (!answeredKeys.includes('field')) {
+          return {
+            id: 'field',
+            question: '你想学习什么领域？',
+            options: [
+              { label: '编程技术', value: '编程技术', letter: 'A' },
+              { label: '语言学习', value: '语言学习', letter: 'B' },
+              { label: '职业技能', value: '职业技能', letter: 'C' },
+              { label: '兴趣爱好', value: '兴趣爱好', letter: 'D' },
+            ]
+          };
+        }
+        
+        if (!answeredKeys.includes('level')) {
+          return {
+            id: 'level',
+            question: '你目前的水平是？',
+            options: [
+              { label: '零基础', value: '零基础', letter: 'A' },
+              { label: '入门水平', value: '入门', letter: 'B' },
+              { label: '有一定基础', value: '中级', letter: 'C' },
+              { label: '想进阶提升', value: '进阶', letter: 'D' },
+            ]
+          };
+        }
+        
+        if (!answeredKeys.includes('goal')) {
+          return {
+            id: 'goal',
+            question: '学习的主要目的是？',
+            options: [
+              { label: '工作需要', value: '工作需要', letter: 'A' },
+              { label: '考证提升', value: '考证提升', letter: 'B' },
+              { label: '转行就业', value: '转行就业', letter: 'C' },
+              { label: '个人兴趣', value: '个人兴趣', letter: 'D' },
+            ]
+          };
+        }
+      }
+      
+      // 通用问题
+      if (answeredKeys.length === 0) {
+        return {
+          id: 'detail',
+          question: '能再具体描述一下你的需求吗？',
+          subtitle: '这有助于我们更准确地帮助你',
+          options: [
+            { label: '需要专业建议', value: '专业建议', letter: 'A' },
+            { label: '想对比选项', value: '对比选项', letter: 'B' },
+            { label: '了解最新信息', value: '最新信息', letter: 'C' },
+            { label: '解决具体问题', value: '具体问题', letter: 'D' },
+          ]
+        };
+      }
+      
+      if (answeredKeys.length === 1) {
+        return {
+          id: 'timeline',
+          question: '你希望在多久内得到结果？',
+          options: [
+            { label: '马上需要', value: '立即', letter: 'A' },
+            { label: '今天内', value: '今天', letter: 'B' },
+            { label: '这几天', value: '近期', letter: 'C' },
+            { label: '不着急', value: '不着急', letter: 'D' },
+          ]
+        };
+      }
+      
+      return null;
+    }
+
+    function buildSearchQuery() {
+      const parts = [];
+      if (state.analysis?.intent?.label) parts.push(state.analysis.intent.label);
+      
+      const { extractedInfo } = state.analysis || {};
+      if (extractedInfo) {
+        if (extractedInfo.destination) parts.push(extractedInfo.destination);
+        if (extractedInfo.purpose) parts.push(extractedInfo.purpose);
+        if (extractedInfo.budget) parts.push(`预算${extractedInfo.budget}`);
+        if (extractedInfo.time) parts.push(extractedInfo.time);
+      }
+      
+      Object.values(state.answers).forEach(answer => {
+        if (!parts.includes(answer)) parts.push(answer);
+      });
+      
+      if (parts.length === 0) parts.push(state.userInput);
+      
+      return parts.join(' ');
+    }
+
+    function generateResults() {
+      const intent = state.analysis?.intent?.type;
+      const dest = state.answers.destination || state.analysis?.extractedInfo?.destination;
+      
+      if (intent === 'travel' || /日本|京都|东京/.test(state.userInput)) {
+        return {
+          summary: `基于你的${dest || '旅行'}需求，为你找到以下推荐`,
+          sections: [
+            {
+              title: '热门景点',
+              subtitle: '精选必游景点，评分与口碑俱佳',
+              icon: 'fa-map-marker-alt',
+              bgColor: 'bg-blue-50',
+              iconColor: 'text-blue-600',
+              items: getAttractions(dest)
+            },
+            {
+              title: '住宿推荐',
+              subtitle: '根据你的预算和偏好精选',
+              icon: 'fa-hotel',
+              bgColor: 'bg-emerald-50',
+              iconColor: 'text-emerald-600',
+              items: getHotels(dest)
+            },
+            {
+              title: '特色美食',
+              subtitle: '当地必尝，口碑推荐',
+              icon: 'fa-utensils',
+              bgColor: 'bg-orange-50',
+              iconColor: 'text-orange-600',
+              items: getFoods(dest)
+            }
+          ]
+        };
+      }
+      
+      if (intent === 'shopping') {
+        return {
+          summary: '基于你的购物需求，推荐以下商品和攻略',
+          sections: [
+            {
+              title: '推荐商品',
+              subtitle: '根据你的需求精选',
+              icon: 'fa-shopping-bag',
+              bgColor: 'bg-purple-50',
+              iconColor: 'text-purple-600',
+              items: getShoppingItems()
+            },
+            {
+              title: '选购攻略',
+              subtitle: '专业建议，帮你做出最佳选择',
+              icon: 'fa-book',
+              bgColor: 'bg-indigo-50',
+              iconColor: 'text-indigo-600',
+              items: getShoppingGuides()
+            }
+          ]
+        };
+      }
+      
+      if (intent === 'learning') {
+        return {
+          summary: '为你推荐学习资源和课程',
+          sections: [
+            {
+              title: '推荐课程',
+              subtitle: '适合你的学习路径',
+              icon: 'fa-graduation-cap',
+              bgColor: 'bg-cyan-50',
+              iconColor: 'text-cyan-600',
+              items: getLearningCourses()
+            }
+          ]
+        };
+      }
+      
+      return {
+        summary: '基于你的需求，为你找到以下相关信息',
+        sections: [
+          {
+            title: '相关推荐',
+            subtitle: '可能对你有帮助',
+            icon: 'fa-lightbulb',
+            bgColor: 'bg-yellow-50',
+            iconColor: 'text-yellow-600',
+            items: getGenericItems()
+          }
+        ]
+      };
+    }
+
+    function getAttractions(dest) {
+      const attractions = {
+        '京都': [
+          { name: '清水寺', description: '京都最古老的寺院，世界文化遗产，悬空的清水舞台可俯瞰京都市区', rating: 4.8, reviews: 12580, tags: ['世界遗产', '寺庙'], image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400', location: '东山区', price: '400日元' },
+          { name: '金阁寺', description: '金碧辉煌的舍利殿倒映在镜湖池中，是日本最具代表性的景观', rating: 4.7, reviews: 10234, tags: ['世界遗产', '庭园'], image: 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400', location: '北区', price: '400日元' },
+          { name: '伏见稻荷大社', description: '以千本鸟居闻名世界，供奉稻荷神，是京都最具代表性的神社', rating: 4.9, reviews: 15678, tags: ['神社', '免费'], image: 'https://images.unsplash.com/photo-1478436127897-769e1b3f0f36?w=400', location: '伏见区', price: '免费' },
+          { name: '岚山竹林', description: '电影《卧虎藏龙》取景地，竹林小径如梦如幻', rating: 4.6, reviews: 8923, tags: ['自然', '摄影'], image: 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=400', location: '右京区', price: '免费' },
+        ],
+        '东京': [
+          { name: '浅草寺', description: '东京最古老的寺庙，雷门大灯笼是标志性景观', rating: 4.6, reviews: 18923, tags: ['寺庙', '传统'], image: 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=400', location: '台东区', price: '免费' },
+          { name: '东京塔', description: '东京地标建筑，高333米，可俯瞰东京全景', rating: 4.5, reviews: 14567, tags: ['地标', '夜景'], image: 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=400', location: '港区', price: '1200日元起' },
+          { name: '涩谷十字路口', description: '世界上最繁忙的十字路口', rating: 4.4, reviews: 12345, tags: ['地标', '免费'], image: 'https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=400', location: '涩谷区', price: '免费' },
+        ]
+      };
+      return attractions[dest] || attractions['京都'];
+    }
+
+    function getHotels(dest) {
+      const hotels = {
+        '京都': [
+          { name: '京都四季酒店', description: '位于东山区的五星级豪华酒店，拥有传统日式庭院设计', price: '¥3500', priceLevel: '豪华', rating: 4.9, reviews: 856, location: '东山区', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400' },
+          { name: '虹夕诺雅京都', description: '乘船入住的浪漫度假村，融合传统日式美学与现代舒适', price: '¥5000', priceLevel: '奢华', rating: 4.9, reviews: 623, location: '西京区', image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=400' },
+          { name: '京都站前酒店', description: '交通便利，靠近JR京都站，适合商务和家庭出行', price: '¥680', priceLevel: '经济', rating: 4.3, reviews: 2341, location: '下京区', image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400' },
+        ]
+      };
+      return hotels[dest] || hotels['京都'];
+    }
+
+    function getFoods(dest) {
+      const foods = {
+        '京都': [
+          { name: '菊乃井', description: '米其林三星怀石料理，注重季节感和摆盘艺术', category: '怀石料理', price: '¥15000', rating: 4.8, reviews: 456, location: '东山区', image: 'https://images.unsplash.com/photo-1580822184713-fc5400e7fe10?w=400' },
+          { name: '中村藤吉', description: '宇治抹茶老铺，抹茶甜品闻名世界', category: '甜品', price: '¥800', rating: 4.6, reviews: 2341, location: '宇治市', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400' },
+          { name: '顺正汤豆腐', description: '南禅寺旁的名店，清淡鲜美的汤豆腐', category: '汤豆腐', price: '¥3000', rating: 4.5, reviews: 1234, location: '东山区', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400' },
+          { name: '一兰拉面', description: '豚骨汤底浓郁，单人隔间用餐体验独特', category: '拉面', price: '¥980', rating: 4.4, reviews: 5678, location: '中京区', image: 'https://images.unsplash.com/photo-1557872943-16a5ac26437e?w=400' },
+        ]
+      };
+      return foods[dest] || foods['京都'];
+    }
+
+    function getShoppingItems() {
+      return [
+        { name: 'MacBook Pro 14寸', description: 'M3 Pro芯片，适合专业视频剪辑', price: '¥14999', rating: 4.8, reviews: 3421, image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400' },
+        { name: 'MacBook Air M3', description: '轻薄便携，适合日常办公', price: '¥8999', rating: 4.7, reviews: 5623, image: 'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=400' },
+        { name: 'Dell XPS 15', description: 'Windows旗舰，适合创意工作', price: '¥12999', rating: 4.5, reviews: 2134, image: 'https://images.unsplash.com/photo-1593642632823-8f78536788c6?w=400' },
+      ];
+    }
+
+    function getShoppingGuides() {
+      return [
+        { name: '2024 MacBook选购指南', description: 'Air vs Pro，M3 vs M3 Pro，详细对比帮你选择', price: '免费', rating: 4.9, reviews: 1205, image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400' },
+        { name: '视频剪辑电脑配置推荐', description: '从入门到专业，不同预算的最佳选择', price: '免费', rating: 4.7, reviews: 892, image: 'https://images.unsplash.com/photo-1537498425277-c283d32ef9db?w=400' },
+      ];
+    }
+
+    function getLearningCourses() {
+      return [
+        { name: 'Python零基础入门', description: '从变量到项目实战，系统学习Python编程', price: '¥299', rating: 4.8, reviews: 5678, image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400' },
+        { name: 'Web前端开发实战', description: 'HTML/CSS/JavaScript全栈技能培养', price: '¥399', rating: 4.7, reviews: 3421, image: 'https://images.unsplash.com/photo-1593720213428-28a5b9e94613?w=400' },
+      ];
+    }
+
+    function getGenericItems() {
+      return [
+        { name: '智能助手专业版', description: '更强大的AI能力，支持长文本、文件分析', price: '¥30/月', rating: 4.8, reviews: 1205, image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400' },
+        { name: '行业报告数据库', description: '覆盖100+行业，每日更新', price: '¥199/月', rating: 4.6, reviews: 892, image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400' },
+      ];
+    }
+
+    // 初始化
+    render();
+  </script>
+</body>
+</html>
